@@ -12,7 +12,7 @@ cp -r joeynmtMODELNAME/ joeynmt/
 The name of a configfile contains the name of the model it belongs to. If you want to train the MTL-model that has a simple linear layer idiom-tagging module
 and does not use its output to modify any attention patterns you has to follow these steps:
 
-cp -r joeynmtLinear/ joeynmt/ \\
+cp -r joeynmtLinear/ joeynmt/ <br>
 nohup python -m joeynmt train configs/iwslt14_deen_bpeMTLnurLinear_mitIceberg.yaml &
 
 # Data source
