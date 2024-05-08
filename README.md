@@ -9,7 +9,11 @@ Before letting a model run, no matter in which mode, make sure to execute the fo
 
 cp -r joeynmtMODELNAME/ joeynmt/
 
-The name of a configfile contains the name of the model it belongs to.
+The name of a configfile contains the name of the model it belongs to. If you want to train the MTL-model that has a simple linear layer idiom-tagging module
+and does not use its output to modify any attention patterns you has to follow these steps:
+
+cp -r joeynmtLinear/ joeynmt/
+nohup python -m joeynmt train configs/
 
 # Data source
 ## Parallel Corpus for Translation 
