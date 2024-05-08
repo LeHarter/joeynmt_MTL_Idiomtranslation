@@ -55,6 +55,7 @@ class BaseDataset(Dataset):
         self.path = path
         self.src_lang = src_lang
         self.trg_lang = trg_lang
+        self.idiom_lang = "idiom"
         self.has_trg = has_trg
         self.split = split
         if self.split == "train":
@@ -92,15 +93,17 @@ class BaseDataset(Dataset):
         """
         raise NotImplementedError
 
-    def __getitem__(self, idx: Union[int, str]) -> Tuple[List[str], List[str]]:
+    def __getitem__(self, idx: Union[int, str]) -> Tuple[List[str], List[str], List[str]]:
         """lookup one item pair of given index."""
-        src, trg = None, None
+        src, trg, idiom = None, None, None
         src = self.get_item(idx=idx, lang=self.src_lang)
         if self.has_trg:
             trg = self.get_item(idx=idx, lang=self.trg_lang)
+            idiom = self.get_item(idx=idx,lang="idiom")
             if trg is None:
                 src = None
-        return src, trg
+                idiom = None
+        return src, trg, idiom
 
     def get_list(self,
                  lang: str,
@@ -117,6 +120,11 @@ class BaseDataset(Dataset):
     def trg(self) -> List[str]:
         """get detokenized preprocessed data in trg language."""
         return self.get_list(self.trg_lang, tokenized=False) if self.has_trg else []
+
+    @property
+    def idiom(self) -> List[str]:
+        """get detokenized preprocessed data in trg language."""
+        return self.get_list("idiom", tokenized=False) if self.has_trg else []
 
     def collate_fn(
         self,
@@ -135,31 +143,34 @@ class BaseDataset(Dataset):
         :return: joeynmt batch object
         """
 
-        def _is_valid(s, t, has_trg):
+        def _is_valid(s, t,i, has_trg):
             # pylint: disable=no-else-return
             if has_trg:
-                return s is not None and t is not None
+                return s is not None and t is not None and i is not None
             else:
                 return s is not None
 
-        batch = [(s, t) for s, t in batch if _is_valid(s, t, self.has_trg)]
-        src_list, trg_list = zip(*batch)
-        assert len(batch) == len(src_list), (len(batch), len(src_list))
+        batch = [(s, t, i) for s, t, i in batch if _is_valid(s, t, i, self.has_trg)]
+        src_list, trg_list, idiom_list = zip(*batch)
+        assert len(batch) == len(src_list) == len(idiom_list), (len(batch), len(src_list), len(idiom_list))
         assert all(s is not None for s in src_list), src_list
         src, src_length = self.sequence_encoder[self.src_lang](src_list)
 
         if self.has_trg:
             assert all(t is not None for t in trg_list), trg_list
             trg, trg_length = self.sequence_encoder[self.trg_lang](trg_list)
+            assert all(i is not None for i in idiom_list), idiom_list
+            idiom, idiom_length = self.sequence_encoder["idiom"](idiom_list)
         else:
             assert all(t is None for t in trg_list)
-            trg, trg_length = None, None
-
+            trg, trg_length, idiom, idiom_length = None, None, None, None
         return Batch(
             src=torch.tensor(src).long(),
             src_length=torch.tensor(src_length).long(),
             trg=torch.tensor(trg).long() if trg else None,
             trg_length=torch.tensor(trg_length).long() if trg_length else None,
+            idiom=torch.tensor(idiom).long() if idiom else None,
+            idiom_length=torch.tensor(idiom_length).long() if idiom_length else None,
             device=device,
             pad_index=pad_index,
             has_trg=self.has_trg,
@@ -286,10 +297,15 @@ class PlaintextDataset(BaseDataset):
         if self.has_trg:
             trg_file = path.with_suffix(f"{path.suffix}.{self.trg_lang}")
             assert trg_file.is_file(), f"{trg_file} not found. Abort."
+            idiom_file = path.with_suffix(f"{path.suffix}.idiom")
+            assert idiom_file.is_file(), f"{idiom_file} not found. Abort."
 
             trg_list = read_list_from_file(trg_file)
             data[self.trg_lang] = _pre_process(trg_list, self.trg_lang)
             assert len(src_list) == len(trg_list)
+            idiom_list = read_list_from_file(idiom_file)
+            data["idiom"] = _pre_process(idiom_list, "idiom")
+            assert len(src_list) == len(idiom_list)
         return data
 
     def sample_random_subset(self, seed: int = 42) -> None:
@@ -688,7 +704,6 @@ def build_dataset(
     """
     dataset = None
     has_trg = True  # by default, we expect src-trg pairs
-
     if dataset_type == "plain":
         if not Path(path).with_suffix(f"{Path(path).suffix}.{trg_lang}").is_file():
             # no target is given -> create dataset from src only
@@ -765,7 +780,7 @@ class SentenceBatchSampler(BatchSampler):
         batch = []
         d = self.sampler.data_source
         for idx in self.sampler:
-            src, trg = d[idx]  # pylint: disable=unused-variable
+            src, trg, idiom = d[idx]  # pylint: disable=unused-variable
             if src is not None:  # otherwise drop instance
                 batch.append(idx)
                 if len(batch) >= self.batch_size:
@@ -796,10 +811,11 @@ class TokenBatchSampler(BatchSampler):
         max_tokens = 0
         d = self.sampler.data_source
         for idx in self.sampler:
-            src, trg = d[idx]  # call __getitem__()
+            src, trg, idiom = d[idx]  # call __getitem__()
             if src is not None:  # otherwise drop instance
                 src_len = 0 if src is None else len(src)
                 trg_len = 0 if trg is None else len(trg)
+                idiom_len = 0 if idiom is None else len(idiom)
                 n_tokens = 0 if src_len == 0 else max(src_len + 1, trg_len + 2)
                 batch.append(idx)
                 if n_tokens > max_tokens:

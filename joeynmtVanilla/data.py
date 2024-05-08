@@ -43,10 +43,12 @@ def load_data(
         datasets = ["train", "dev", "test"]
     src_cfg = data_cfg["src"]
     trg_cfg = data_cfg["trg"]
+    idiom_cfg = data_cfg["idiom"]
 
     # load data from files
     src_lang = src_cfg["lang"]
     trg_lang = trg_cfg["lang"]
+    idiom_lang = "idiom"
     train_path = data_cfg.get("train", None)
     dev_path = data_cfg.get("dev", None)
     test_path = data_cfg.get("test", None)
@@ -83,16 +85,18 @@ def load_data(
 
     # build vocab
     logger.info("Building vocabulary...")
-    src_vocab, trg_vocab = build_vocab(data_cfg, dataset=train_data)
+    src_vocab, trg_vocab, idiom_vocab = build_vocab(data_cfg, dataset=train_data)
 
     # set vocab to tokenizer
     tokenizer[src_lang].set_vocab(src_vocab._itos)  # pylint: disable=protected-access
     tokenizer[trg_lang].set_vocab(trg_vocab._itos)  # pylint: disable=protected-access
+    tokenizer["idiom"].set_vocab(idiom_vocab._itos)
 
     # encoding func
     sequence_encoder = {
         src_lang: partial(src_vocab.sentences_to_ids, bos=False, eos=True),
         trg_lang: partial(trg_vocab.sentences_to_ids, bos=True, eos=True),
+        idiom_lang: partial(idiom_vocab.sentences_to_ids,bos=False,eos=False)
     }
     if train_data is not None:
         train_data.sequence_encoder = sequence_encoder
@@ -145,12 +149,16 @@ def load_data(
             train_data.get_item(idx=0, lang=train_data.src_lang, is_train=False))
         trg = "\n\t[TRG] " + " ".join(
             train_data.get_item(idx=0, lang=train_data.trg_lang, is_train=False))
+        idiom = "\n\t[IDIOM] " + " ".join(
+            train_data.get_item(idx=0, lang=train_data.idiom_lang, is_train=False))
         logger.info("First training example:%s%s", src, trg)
+        
 
     logger.info("First 10 Src tokens: %s", src_vocab.log_vocab(10))
     logger.info("First 10 Trg tokens: %s", trg_vocab.log_vocab(10))
+    logger.info("First 10 Idiom tokens: %s", idiom_vocab.log_vocab(10))
 
     logger.info("Number of unique Src tokens (vocab_size): %d", len(src_vocab))
     logger.info("Number of unique Trg tokens (vocab_size): %d", len(trg_vocab))
 
-    return src_vocab, trg_vocab, train_data, dev_data, test_data
+    return src_vocab, trg_vocab, idiom_vocab, train_data, dev_data, test_data

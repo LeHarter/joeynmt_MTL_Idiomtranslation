@@ -28,6 +28,8 @@ class Batch:
         src_length: Tensor,
         trg: Optional[Tensor],
         trg_length: Optional[Tensor],
+        idiom:Optional[Tensor],
+        idiom_length:Optional[Tensor],
         device: torch.device,
         pad_index: int = PAD_ID,
         has_trg: bool = True,
@@ -53,6 +55,7 @@ class Batch:
         self.trg: Optional[Tensor] = None
         self.trg_mask: Optional[Tensor] = None
         self.trg_length: Optional[Tensor] = None
+        self.idiom: Otional[Tensor] = None
 
         self.nseqs: int = self.src.size(0)
         self.ntokens: Optional[int] = None
@@ -69,6 +72,9 @@ class Batch:
             # we exclude the padded areas (and blank areas) from the loss computation
             self.trg_mask: Tensor = (self.trg != pad_index).unsqueeze(1)
             self.ntokens: int = (self.trg != pad_index).data.sum().item()
+            # idioms
+            self.idiom = idiom
+            self.idiom_length = (self.src != 0).unsqueeze(1)
 
         if device.type == "cuda":
             self._make_cuda(device)
@@ -87,6 +93,8 @@ class Batch:
             self.trg = self.trg.to(device)
             self.trg_length = self.trg_length.to(device)
             self.trg_mask = self.trg_mask.to(device)
+            self.idiom = self.idiom.to(device)
+            self.idiom_length = self.idiom_length.to(device)
 
     def normalize(
         self,
@@ -145,6 +153,8 @@ class Batch:
             sorted_trg_length = self.trg_length[perm_index]
             sorted_trg_mask = self.trg_mask[perm_index]
             sorted_trg = self.trg[perm_index]
+            sorted_idiom = self.idiom[perm_index]
+            sorted_idiom_length = self.idiom_length[perm_index]
 
         self.src = sorted_src
         self.src_length = sorted_src_length
@@ -155,6 +165,8 @@ class Batch:
             self.trg_mask = sorted_trg_mask
             self.trg_length = sorted_trg_length
             self.trg = sorted_trg
+            self.idiom = sorted_idiom
+            self.idiom_length = sorted_idiom_length
 
         assert max(rev_index) < len(rev_index), rev_index
         return rev_index

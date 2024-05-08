@@ -578,6 +578,8 @@ class TransformerDecoder(Decoder):
                 f'layer_norm="{self.layers[0]._layer_norm_position}", '
                 f"activation={self.layers[0].feed_forward.pwff_layer[1]})")
 
+
+
 class TransformerDecoderSagT5(Decoder):
     """
     A transformer decoder with N masked layers.
