@@ -9,6 +9,8 @@ Before letting a model run, no matter in which mode, make sure to execute the fo
 
 cp -r joeynmtMODELNAME/ joeynmt/
 
+The name of a configfile contains the name of the model it belongs to.
+
 # Data source
 ## Parallel Corpus for Translation 
 ## Idiom labels for idiom-tagging
