@@ -1,4 +1,4 @@
-name: "transformer_iwslt14_deen_bpeBaseline_mitIceberg"
+name: "transformer_iwslt14_deen_bpeLSTM_mitIceberg"
 joeynmt_version: "2.0.0"
 
 data:
@@ -77,7 +77,7 @@ training:
     epochs: 40
     validation_freq: 1000
     logging_freq: 100
-    model_dir: "models/transformer_iwslt14_deen_bpeMTLBaseline_mitIceberg"
+    model_dir: "models/transformer_iwslt14_deen_bpeMTLLSTM_mitIceberg"
     overwrite: False
     shuffle: True
     use_cuda: True
