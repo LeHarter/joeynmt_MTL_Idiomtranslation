@@ -13,7 +13,7 @@ The name of a configfile contains the name of the model it belongs to. If you wa
 and does not use its output to modify any attention patterns you has to follow these steps:
 
 cp -r joeynmtLinear/ joeynmt/
-nohup python -m joeynmt train configs/
+nohup python -m joeynmt train configs/iwslt14_deen_bpeMTLnurLinear_mitIceberg.yaml &
 
 # Data source
 ## Parallel Corpus for Translation 
